@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import uvicorn
 
+# Load .env variables
 load_dotenv()
 
 llm = os.getenv('LLM_MODEL', 'gpt-4o-mini')
@@ -77,14 +78,9 @@ async def retrieve_relevant_documentation(ctx: RunContext[PydanticAIDeps], user_
         if not result.data:
             return "No relevant documentation found."
 
-        formatted_chunks = []
-        for doc in result.data:
-            chunk_text = f"""
-# {doc['title']}
-
-{doc['content']}
-"""
-            formatted_chunks.append(chunk_text)
+        formatted_chunks = [
+            f"# {doc['title']}\n\n{doc['content']}" for doc in result.data
+        ]
 
         return "\n\n---\n\n".join(formatted_chunks)
 
@@ -135,9 +131,7 @@ async def get_page_content(ctx: RunContext[PydanticAIDeps], url: str) -> str:
         print(f"Error retrieving page content: {e}")
         return f"Error retrieving page content: {str(e)}"
 
-# --------------------------
-# FastAPI Web Service Setup
-# --------------------------
+# FastAPI setup
 app = FastAPI()
 
 @app.get("/")
@@ -162,6 +156,7 @@ async def crawl_docs(request: Request):
     result = await retrieve_relevant_documentation(ctx, query)
     return JSONResponse(content={"response": result})
 
+# --- Port binding for Render ---
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.getenv("PORT", "10000"))  # Now matches your Render environment
     uvicorn.run("pydantic_ai_expert:app", host="0.0.0.0", port=port)
